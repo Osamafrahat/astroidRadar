@@ -7,31 +7,50 @@ import androidx.room.*
 @Dao
 interface AsteroidDao {
 
-    @Query("SELECT * FROM asteroids ORDER BY closeApproachDate DESC")
-    fun getAsteroids(): LiveData<List<DatabaseAsteroid>>
+    @Query("SELECT * FROM DatabaseAsteroid WHERE closeApproachDate >= :closeApproachDate " +
+            "ORDER BY closeApproachDate")
+    fun getAsteroidsAfterDate(closeApproachDate: String): LiveData<List<DatabaseAsteroid>>
 
-    @Query("SELECT * FROM asteroids WHERE closeApproachDate = :startDate ORDER BY closeApproachDate DESC")
-    fun getAsteroidsDay(startDate: String): LiveData<List<DatabaseAsteroid>>
+    @Query("SELECT * FROM DatabaseAsteroid ORDER BY closeApproachDate")
+    fun getAllAsteroids(): LiveData<List<DatabaseAsteroid>>
 
-    @Query("SELECT * FROM asteroids WHERE closeApproachDate BETWEEN :startDate AND :endDate ORDER BY closeApproachDate DESC")
-    fun getAsteroidsDate(startDate: String, endDate: String): LiveData<List<DatabaseAsteroid>>
+    @Query("SELECT * FROM DatabaseAsteroid WHERE closeApproachDate = :closeApproachDate")
+    fun getAsteroidsWithDate(closeApproachDate: String): LiveData<List<DatabaseAsteroid>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertAll(vararg asteroid: DatabaseAsteroid)
+    fun insertAll(vararg asteroids: DatabaseAsteroid)
+
+    @Query("DELETE FROM DatabaseAsteroid WHERE closeApproachDate < :closeApproachDate")
+    fun deleteAsteroidsBefore(closeApproachDate: String)
+
 }
 
-@Database(entities = [DatabaseAsteroid::class], version = 1, exportSchema = false)
-abstract class AsteroidDatabase : RoomDatabase() {
+@Dao
+interface PictureOfDayDao {
+
+    @Query("SELECT * FROM DatabasePictureOfDay WHERE date = :date")
+    fun getPictureOfDay(date: String): LiveData<DatabasePictureOfDay>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(databasePictureOfDay: DatabasePictureOfDay)
+
+    @Query("DELETE FROM DatabasePictureOfDay WHERE date < :date")
+    fun deletePicturesBefore(date: String)
+}
+
+@Database(entities = [DatabaseAsteroid::class, DatabasePictureOfDay::class], version = 1)
+abstract class AsteroidsDatabase : RoomDatabase() {
     abstract val asteroidDao: AsteroidDao
+    abstract val pictureOfDayDao: PictureOfDayDao
 }
 
-private lateinit var INSTANCE: AsteroidDatabase
+private lateinit var INSTANCE: AsteroidsDatabase
 
-fun getDatabase(context: Context): AsteroidDatabase {
-    synchronized(AsteroidDatabase::class.java) {
+fun getDatabase(context: Context): AsteroidsDatabase {
+    synchronized(AsteroidsDatabase::class.java) {
         if (!::INSTANCE.isInitialized) {
             INSTANCE = Room.databaseBuilder(context.applicationContext,
-                AsteroidDatabase::class.java,
+                AsteroidsDatabase::class.java,
                 "asteroids").build()
         }
     }

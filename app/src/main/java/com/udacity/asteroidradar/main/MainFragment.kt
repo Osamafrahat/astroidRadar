@@ -8,59 +8,42 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.udacity.asteroidradar.Asteroid
 import com.udacity.asteroidradar.R
 import com.udacity.asteroidradar.databinding.FragmentMainBinding
 import com.udacity.asteroidradar.utils.FilterAsteroid
 
-@RequiresApi(Build.VERSION_CODES.N)
 class MainFragment : Fragment() {
 
     private val viewModel: MainViewModel by lazy {
-        val activity = requireNotNull(this.activity) {
-            "You can only access the viewModel after onViewCreated()"
-        }
-
-        ViewModelProvider(
-            this,
-            MainViewModel.Factory(activity.application)
-        ).get(MainViewModel::class.java)
+        val activity = requireNotNull(this.activity) { "You can only access the viewModel after onViewCreated()" }
+        ViewModelProvider(this, MainViewModel.Factory(activity.application)).get(MainViewModel::class.java)
     }
 
-    private val asteroidAdapter = MainAdapter(MainAdapter.AsteroidListener { asteroid ->
-        viewModel.onAsteroidClicked(asteroid)
-    })
+    private lateinit var adapter: MainAdapter
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
+                              savedInstanceState: Bundle?): View {
         val binding = FragmentMainBinding.inflate(inflater)
         binding.lifecycleOwner = this
 
         binding.viewModel = viewModel
-        binding.asteroidRecycler.adapter = asteroidAdapter
 
-        viewModel.navigateToDetailAsteroid.observe(viewLifecycleOwner, Observer { asteroid ->
-            if (asteroid != null) {
-                this.findNavController().navigate(MainFragmentDirections.actionShowDetail(asteroid))
-                viewModel.onAsteroidNavigated()
-            }
+        adapter = MainAdapter(AsteroidClick { asteroid ->
+            findNavController().navigate(MainFragmentDirections.actionShowDetail(asteroid))
         })
+        binding.asteroidRecycler.adapter = adapter
+        binding.asteroidRecycler.layoutManager = LinearLayoutManager(context)
 
         setHasOptionsMenu(true)
 
         return binding.root
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel.asteroidList.observe(viewLifecycleOwner, Observer<List<Asteroid>> { asteroid ->
-            asteroid.apply {
-                asteroidAdapter.submitList(this)
-            }
-        })
+        observeAsteroidsLiveData()
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -69,19 +52,22 @@ class MainFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        viewModel.onChangeFilter(
-            when (item.itemId) {
-                R.id.show_rent_menu -> {
-                    FilterAsteroid.TODAY
-                }
-                R.id.show_all_menu -> {
-                    FilterAsteroid.WEEK
-                }
-                else -> {
-                    FilterAsteroid.ALL
-                }
-            }
-        )
+        val filter = when(item.itemId) {
+            R.id.show_week_menu -> FilterAsteroid.WEEK
+            R.id.show_all_menu -> FilterAsteroid.ALL
+            R.id.show_today_menu -> FilterAsteroid.TODAY
+            else -> FilterAsteroid.WEEK
+        }
+        viewModel.updateAsteroids(filter)
+        observeAsteroidsLiveData()
         return true
+    }
+
+    private fun observeAsteroidsLiveData() {
+        viewModel.asteroids.observe(viewLifecycleOwner, Observer<List<Asteroid>> { asteroids ->
+            asteroids?.apply {
+                adapter.asteroids = asteroids
+            }
+        })
     }
 }

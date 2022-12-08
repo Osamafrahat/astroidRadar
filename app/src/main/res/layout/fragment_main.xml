@@ -28,20 +28,18 @@
                 android:layout_height="match_parent"
                 android:adjustViewBounds="true"
                 android:scaleType="centerCrop"
-                android:contentDescription="@{viewModel.pictureOfDay.title}"
-                app:srcCompat="@drawable/placeholder_picture_of_day"
-                app:pictureUrl="@{viewModel.pictureOfDay.url}" />
+                app:imageUrl="@{viewModel.pictureOfDay.url}"
+                tools:srcCompat="@drawable/placeholder_picture_of_day"
+                android:contentDescription="@{viewModel.pictureOfDay.title}" />
 
             <TextView
                 android:id="@+id/textView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:textColor="@android:color/white"
-                android:textStyle="bold"
-                android:textSize="20sp"
+                style="@style/AsteroidTitle"
                 android:layout_gravity="bottom"
                 android:background="#55010613"
+                android:padding="@dimen/default_padding"
                 android:text="@string/image_of_the_day" />
         </FrameLayout>
 
@@ -63,11 +61,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:indeterminate="true"
-            app:loadingWheel="@{viewModel.asteroidList.size()}"
+            android:visibility="gone"
+            app:loadingStatus="@{viewModel.loadingComplete}"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

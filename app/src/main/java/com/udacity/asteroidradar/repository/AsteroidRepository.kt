@@ -1,64 +1,81 @@
 package com.udacity.asteroidradar.repository
 
-import android.os.Build
-import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 import com.udacity.asteroidradar.Asteroid
-import com.udacity.asteroidradar.api.AstroidApiService
+import com.udacity.asteroidradar.BuildConfig
+import com.udacity.asteroidradar.PictureOfDay
+import com.udacity.asteroidradar.api.Network
+import com.udacity.asteroidradar.api.asDatabaseModel
 import com.udacity.asteroidradar.api.parseAsteroidsJsonResult
-import com.udacity.asteroidradar.database.AsteroidDatabase
-import com.udacity.asteroidradar.database.asDatabaseModel
-import com.udacity.asteroidradar.database.asDomainModel
-import com.udacity.asteroidradar.utils.Constants.API_KEY
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.udacity.asteroidradar.database.*
+import com.udacity.asteroidradar.utils.Constants
+import com.udacity.asteroidradar.utils.DateUtils
+import com.udacity.asteroidradar.utils.FilterAsteroid
 import org.json.JSONObject
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import timber.log.Timber
 
-class AsteroidRepository(private val database: AsteroidDatabase) {
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private val startDate = LocalDateTime.now()
+class AsteroidsRepository(private val database: AsteroidsDatabase) {
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private val endDate = LocalDateTime.now().minusDays(7)
+    lateinit var asteroids: LiveData<List<Asteroid>>
 
-    val allAsteroids: LiveData<List<Asteroid>> =
-        Transformations.map(database.asteroidDao.getAsteroids()) {
+    private var _loadingComplete = MutableLiveData<Boolean>(false)
+    val loadingComplete: LiveData<Boolean>
+        get() = _loadingComplete
+
+    init {
+        _loadingComplete.postValue(false)
+        getAsteroidsWithFilter()
+        _loadingComplete.postValue(true)
+    }
+
+    private fun updateAsteroidsList(liveData: LiveData<List<DatabaseAsteroid>>) =
+        Transformations.map(liveData) {
             it.asDomainModel()
         }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    val todayAsteroids: LiveData<List<Asteroid>> =
-        Transformations.map(database.asteroidDao.getAsteroidsDay(startDate.format(DateTimeFormatter.ISO_DATE))) {
-            it.asDomainModel()
-        }
+    val pictureOfDay: LiveData<PictureOfDay> = Transformations.map(
+        database.pictureOfDayDao.getPictureOfDay(DateUtils.getTodayAsString())) {
+        it?.asDomainModel()
+    }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    val weekAsteroids: LiveData<List<Asteroid>> =
-        Transformations.map(
-            database.asteroidDao.getAsteroidsDate(
-                startDate.format(DateTimeFormatter.ISO_DATE),
-                endDate.format(DateTimeFormatter.ISO_DATE)
-            )
-        ) {
-            it.asDomainModel()
+    suspend fun refreshData() {
+        _loadingComplete.postValue(false)
+        try {
+            refreshAsteroids()
+            refreshPictureOfDay()
+        } catch (e: Exception) {
+            Timber.e(e, "Error refreshing data")
+        } finally {
+            _loadingComplete.postValue(true)
         }
+    }
 
-    @RequiresApi(Build.VERSION_CODES.N)
-    suspend fun refreshAsteroids() {
-        withContext(Dispatchers.IO) {
-            try {
-                val asteroids = AstroidApiService.AsteroidApi.retrofitService.getAsteroids(API_KEY)
-                val result = parseAsteroidsJsonResult(JSONObject(asteroids))
-                database.asteroidDao.insertAll(*result.asDatabaseModel())
-                Log.d("Refresh Asteroids", "Success")
-            } catch (err: Exception) {
-                Log.e("Failed: AsteroidRepFile", err.message.toString())
-            }
+    private suspend fun refreshAsteroids() {
+        val response = Network.service.getAsteroids(
+            DateUtils.getTodayAsString(),
+            DateUtils.getEndDateAsString(Constants.DEFAULT_END_DATE_DAYS),
+            Constants.API_KEY)
+        val asteroidsList = parseAsteroidsJsonResult(JSONObject(response.body()!!)).toList()
+        database.asteroidDao.insertAll(*asteroidsList.asDatabaseModel())
+        database.asteroidDao.deleteAsteroidsBefore(DateUtils.getTodayAsString())
+    }
+
+    private suspend fun refreshPictureOfDay() {
+        val pictureOfDay = Network.service.getPictureOfDay(Constants.API_KEY)
+
+        database.pictureOfDayDao.insert(pictureOfDay.asDatabaseModel())
+        database.pictureOfDayDao.deletePicturesBefore(DateUtils.getTodayAsString())
+    }
+
+    fun getAsteroidsWithFilter(filter: FilterAsteroid = FilterAsteroid.WEEK) {
+        val liveData = when(filter) {
+            FilterAsteroid.WEEK -> database.asteroidDao.getAsteroidsAfterDate(DateUtils.getTodayAsString())
+            FilterAsteroid.TODAY -> database.asteroidDao.getAsteroidsWithDate(DateUtils.getTodayAsString())
+            FilterAsteroid.ALL -> database.asteroidDao.getAllAsteroids()
         }
+        asteroids = updateAsteroidsList(liveData)
     }
 }

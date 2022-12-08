@@ -5,66 +5,48 @@
 
     <data>
         <variable
-            name="astroid"
+            name="asteroid"
             type="com.udacity.asteroidradar.Asteroid" />
+
+        <variable
+            name="asteroidCallback"
+            type="com.udacity.asteroidradar.main.AsteroidClick" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        tools:background="@color/app_background">
-
-
-        <TextView
-            android:id="@+id/txt_title_asteroid"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@{astroid.codename}"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="@+id/guidelineRight"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:text="Title" />
+        android:padding="@dimen/default_padding"
+        android:onClick="@{() -> asteroidCallback.onClick(asteroid)}">
 
         <TextView
-            android:id="@+id/txt_close_date_aproche"
-            android:layout_width="wrap_content"
+            android:id="@+id/asteroid_name_tv"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            tools:text="@string/close_approach_data_title"
-            android:text="@{astroid.closeApproachDate}"
-            android:textColor="@color/default_text_color"
-            android:textSize="16sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="@+id/txt_title_asteroid"
-            app:layout_constraintTop_toBottomOf="@+id/txt_title_asteroid" />
+            android:layout_width="wrap_content"
+            style="@style/AsteroidTitle"
+            tools:text="(2010 XT10)"
+            android:text="@{asteroid.codename}"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            style="@style/AsteroidText"
+            android:id="@+id/approach_date_tv"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            app:layout_constraintStart_toStartOf="@+id/asteroid_name_tv"
+            app:layout_constraintTop_toBottomOf="@+id/asteroid_name_tv"
+            tools:text="2020-02-08"
+            android:text="@{asteroid.closeApproachDate}" />
 
         <ImageView
-            android:id="@+id/img_status_hazardous"
-            android:layout_width="wrap_content"
+            android:id="@+id/potentially_hazardous_iv"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="@+id/txt_close_date_aproche"
-            app:layout_constraintEnd_toStartOf="@+id/guidelineLeft"
-            app:layout_constraintTop_toTopOf="@+id/txt_title_asteroid"
-            app:srcCompat="@drawable/ic_status_potentially_hazardous"
-            android:contentDescription="@{astroid.codename}"
-            app:statusIcon="@{astroid.potentiallyHazardous}"/>
-
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineRight"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintGuide_begin="16dp" />
-
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guidelineLeft"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintGuide_begin="395dp" />
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:srcCompat="@drawable/ic_status_normal"
+            app:statusIcon="@{asteroid.potentiallyHazardous}" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
